@@ -1,0 +1,113 @@
+name: skill-channel-telegram
+version: 0.1.0
+mode: service
+entrypoint: src.skill_channel_telegram_service.app:app
+core_api: ">=1.0,<2.0"
+capabilities:
+  - id: channel_gateway.telegram_status
+    description: Return the current Telegram gateway snapshot.
+    input_schema:
+      type: object
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, error, degraded]
+        gateway_name:
+          type: string
+        connected:
+          type: boolean
+        last_event_at:
+          type: ["string", "null"]
+      required: [status]
+    risk_level: low
+    confirmation_required: false
+    retry_policy: bounded_backoff
+    observability_events:
+      - channel_gateway.telegram.status
+  - id: channel_gateway.telegram_webhook
+    description: Process a Telegram webhook payload and emit a reply.
+    input_schema:
+      type: object
+      required: [payload]
+      properties:
+        payload:
+          type: object
+          description: "Raw Telegram webhook JSON as received from Telegram Bot API"
+        provided_secret:
+          type: ["string", "null"]
+          description: "Webhook secret token for validation (X-Telegram-Bot-Api-Secret-Token)"
+        state_dir:
+          type: string
+          description: "Runtime state directory path (injected by core)"
+        outputs_dir:
+          type: string
+          description: "Runtime outputs directory path (injected by core)"
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, error, ignored]
+        reply_sent:
+          type: boolean
+        detail:
+          type: ["string", "null"]
+      required: [status]
+    risk_level: medium
+    confirmation_required: false
+    retry_policy: bounded_backoff
+    observability_events:
+      - channel_gateway.telegram.webhook
+  - id: channel_gateway.telegram_voice_note
+    description: Process a Telegram voice-note webhook payload and emit a reply.
+    input_schema:
+      type: object
+      required: [payload]
+      properties:
+        payload:
+          type: object
+          description: "Raw Telegram webhook JSON containing voice note update"
+        provided_secret:
+          type: ["string", "null"]
+        state_dir:
+          type: string
+        outputs_dir:
+          type: string
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, error, ignored]
+        transcription:
+          type: ["string", "null"]
+        reply_sent:
+          type: boolean
+        detail:
+          type: ["string", "null"]
+      required: [status]
+    risk_level: medium
+    confirmation_required: false
+    retry_policy: bounded_backoff
+    observability_events:
+      - channel_gateway.telegram.voice_note
+permissions:
+  read_memory: false
+  write_memory: true
+  internet_access: true
+  file_write: true
+  external_actions: true
+healthcheck:
+  kind: http
+  url: http://127.0.0.1:8421/health
+service:
+  base_url: http://127.0.0.1:8421
+  execute_path: /execute
+  health_path: /health
+timeout_ms: 120000
+enabled_by_default: true
